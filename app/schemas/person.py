@@ -1,7 +1,7 @@
 from enum import IntEnum
 
-from pydantic import BaseModel, field_validator
-from typing import Optional
+from pydantic import BaseModel
+from typing import Dict, List, Optional
 from datetime import date
 
 
@@ -26,13 +26,18 @@ class PersonBase(BaseModel):
     fact_address: Optional[str]
     reg_date: Optional[date]
     active: bool
-
-    @field_validator('kind')
-    @classmethod
-    def check_kind_value(cls, value: int):
-        if value not in PersonKindEnum.__members__.values():
-            raise ValueError('Можно использовать только цифры от 1 до 3')
-        return value
+    okopf: Optional[str]
+    okvad: Optional[str]
+    ogrn: str
+    region: Optional[str]
+    uk: int
+    support_type: Optional[str]
+    # @field_validator('kind')
+    # @classmethod
+    # def check_kind_value(cls, value: int):
+    #     if value not in PersonKindEnum.__members__.values():
+    #         raise ValueError('Можно использовать только цифры от 1 до 3')
+    #     return value
 
 
 class PersonCreate(PersonBase):
@@ -43,9 +48,14 @@ class PersonUpdate(PersonBase):
     pass
 
 
+class PersonPatents(BaseModel):
+    kind: int
+    reg_number: int
+
+
 class PersonAdditionalFields(PersonBase):
     category: str
-    patent_ids: list[int] = []
+    patents: list[PersonPatents] = []
     patent_count: int = 0
 
     class Config:
@@ -53,5 +63,32 @@ class PersonAdditionalFields(PersonBase):
 
 
 class PersonDB(PersonBase):
+    class Config:
+        orm_mode = True
+
+class StatItem(BaseModel):
+    name: str
+    count: int
+
+class PersonsList(BaseModel):
+    okopf_stats: List[StatItem]
+    okvad_stats: List[StatItem]
+    mpk_stats: List[StatItem]
+
+    class Config:
+        from_attributes = True
+
+class PersonsMskStats(BaseModel):
+    total_persons: int
+    by_kind: Dict[int, int]
+    by_category: Dict[str, int]
+    moscow_cluster_percentage: float
+    moscow_support_type_percentage: float
+
+class PersonsAllStats(BaseModel):
+    total_persons: int
+    by_kind: Dict[int, int]
+    by_category: Dict[str, int]
+
     class Config:
         orm_mode = True

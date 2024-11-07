@@ -1,4 +1,6 @@
-from sqlalchemy import Column, Integer, Date, String, Boolean
+from enum import unique
+
+from sqlalchemy import Column, Integer, Date, String, Boolean, SmallInteger
 from sqlalchemy.orm import relationship
 
 from app.core.db import Base
@@ -6,7 +8,7 @@ from app.core.db import Base
 
 class Person(Base):
     """
-    Модель Person представляет физическое или юридическое лицо, связанное с патентом.
+    Модель Person.
 
     Атрибуты:
        kind (int): Тип лица.
@@ -18,6 +20,11 @@ class Person(Base):
        reg_date (Date): Дата регистрации лица.
        active (bool): Флаг активности лица, по умолчанию True.
        category (str): Категория лица.
+       okopf (str | None): Код ОКОПФ
+       okvad (str | None): Код ОКВЭД
+       region (str | None): Регион регистрации
+       uk (int): Признак участника кластера (1 - участник, 0 - нет)
+       support_type (str | None): Тип поддержки
        ownerships (list[Ownership]): Связь с моделью Ownership, с каскадным удалением.
     """
     kind = Column(Integer, nullable=False)
@@ -29,4 +36,11 @@ class Person(Base):
     reg_date = Column(Date)
     active = Column(Boolean, default=True)
     category = Column(String)
+    okopf = Column(String)
+    okvad = Column(String)
+    region = Column(String)
+    ogrn = Column(String, unique=True, nullable=False, comment="ОГРН организации")
+    uk = Column(SmallInteger, nullable=False, comment="Участник кластера(uk=1-участник, uk=0-нет)")
+    support_type = Column(String)
+
     ownerships = relationship('Ownership', back_populates='person', cascade="all, delete-orphan")

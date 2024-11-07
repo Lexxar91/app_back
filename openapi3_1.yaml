@@ -1,0 +1,1750 @@
+openapi: 3.1.0
+info:
+  title: Сервис анализа патентной активности компаний.
+  version: 0.1.0
+paths:
+  /metrics:
+    get:
+      summary: Metrics
+      description: Endpoint that serves Prometheus metrics.
+      operationId: metrics_metrics_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /patents:
+    get:
+      tags:
+        - Patents
+      summary: List Patents
+      description: >-
+        Получить список патентов с пагинацией и возможностью фильтрации.
+
+
+        Parameters:
+
+        - **page** (int, optional): Номер страницы для пагинации. По умолчанию
+        1.
+
+        - **pagesize** (int, optional): Количество патентов на странице. По
+        умолчанию 10.
+
+        - **filter_id** (int, optional): ID фильтра для фильтрации по списку ИНН
+        владельцев.
+
+        - **kind** (int, optional): Тип патента для фильтрации:
+            * 1 - Изобретение
+            * 2 - Полезная модель
+            * 3 - Промышленный образец
+        - **actual** (bool, optional): Фильтр по актуальности патента:
+            * true - только действующие патенты
+            * false - только недействующие патенты
+
+        Returns:
+
+        - **PatentsList**: Объект, содержащий:
+            * total (int): Общее количество патентов
+            * items (List[Patent]): Список патентов с информацией о владельцах
+      operationId: list_patents_patents_get
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+            title: Page
+        - name: pagesize
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+            title: Pagesize
+        - name: filter_id
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+              - type: 'null'
+            title: Filter Id
+        - name: kind
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+              - type: 'null'
+            title: Kind
+        - name: actual
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: boolean
+              - type: 'null'
+            title: Actual
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatentsList'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+        - Patents
+      summary: Create Patent
+      description: >-
+        Создать новый патент.
+
+
+        Parameters:
+
+        - **patent** (PatentCreate): Объект с данными для создания патента,
+        содержащий:
+            * reg_number (int): Регистрационный номер патента
+            * reg_date (date): Дата регистрации
+            * kind (int): Тип патента (1 - Изобретение, 2 - Полезная модель, 3 - Промышленный образец)
+            * name (str): Название патента
+            * author_raw (str, optional): Список авторов
+            * owner_raw (str, optional): Список владельцев
+            * country_code (str, optional): Код страны правообладателя
+            * ... другие опциональные поля
+
+        Returns:
+
+        - **PatentDB**: Созданный патент
+      operationId: create_patent_patents_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatentCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatentDB'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /patents/stats:
+    get:
+      tags:
+        - Patents
+      summary: Get Patents Stats
+      description: >-
+        Получить статистику по патентам.
+
+
+        Parameters:
+
+        - **filter_id** (int, optional): ID фильтра для получения статистики по
+        конкретным ИНН.
+            ID фильтров начинаются с 4 и выше.
+
+        Returns:
+
+        - **PatentsStats**: Объект со статистикой, содержащий:
+            * total_patents (int): Общее количество патентов
+            * total_ru_patents (int): Количество российских патентов
+            * total_with_holders (int): Количество патентов с указанными владельцами
+            * total_ru_with_holders (int): Количество российских патентов с владельцами
+            * with_holders_percent (int): Процент патентов с указанными владельцами
+            * ru_with_holders_percent (int): Процент российских патентов с владельцами
+            * by_author_count (Dict): Распределение по количеству авторов
+            * by_patent_kind (Dict): Распределение по типам патентов
+      operationId: get_patents_stats_patents_stats_get
+      parameters:
+        - name: filter_id
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+              - type: 'null'
+            title: Filter Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatentsStats'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /patents/{patent_kind}/{patent_reg_number}:
+    get:
+      tags:
+        - Patents
+      summary: Get Patent
+      description: |-
+        Получить детальную информацию о патенте.
+
+        Parameters:
+        - **patent_kind** (int): Тип патента:
+            * 1 - Изобретение
+            * 2 - Полезная модель
+            * 3 - Промышленный образец
+        - **patent_reg_number** (int): Регистрационный номер патента
+
+        Returns:
+        - **PatentAdditionalFields**: Детальная информация о патенте, включая:
+            * Все стандартные поля патента
+            * owner_raw (str): Список владельцев одной строкой
+            * patent_holders (List[PatentHolder]): Структурированный список владельцев
+      operationId: get_patent_patents__patent_kind___patent_reg_number__get
+      parameters:
+        - name: patent_kind
+          in: path
+          required: true
+          schema:
+            type: integer
+            title: Patent Kind
+        - name: patent_reg_number
+          in: path
+          required: true
+          schema:
+            type: integer
+            title: Patent Reg Number
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatentAdditionalFields'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    patch:
+      tags:
+        - Patents
+      summary: Update Patent
+      description: |-
+        Обновить существующий патент.
+
+        Args:
+           patent_kind (int): вид патента.
+           patent_reg_number (int): регистрационный номер патента.
+           obj_in (PatentUpdate): данные для обновления патента.
+           session (AsyncSession): асинхронная сессия базы данных.
+
+        Returns:
+           PatentDB: обновленный патент.
+      operationId: update_patent_patents__patent_kind___patent_reg_number__patch
+      parameters:
+        - name: patent_kind
+          in: path
+          required: true
+          schema:
+            type: integer
+            title: Patent Kind
+        - name: patent_reg_number
+          in: path
+          required: true
+          schema:
+            type: integer
+            title: Patent Reg Number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatentUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatentDB'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+        - Patents
+      summary: Delete Patent
+      description: |-
+        Обновить существующий патент.
+
+        Parameters:
+        - **patent_kind** (int): Тип патента:
+            * 1 - Изобретение
+            * 2 - Полезная модель
+            * 3 - Промышленный образец
+        - **patent_reg_number** (int): Регистрационный номер патента
+        - **obj_in** (PatentUpdate): Объект с данными для обновления:
+            * name (str, optional): Новое название патента
+            * actual (bool, optional): Статус актуальности
+            * author_raw (str, optional): Обновленный список авторов
+            * ... другие опциональные поля
+
+        Returns:
+        - **PatentDB**: Обновленный патент
+      operationId: delete_patent_patents__patent_kind___patent_reg_number__delete
+      parameters:
+        - name: patent_kind
+          in: path
+          required: true
+          schema:
+            type: integer
+            title: Patent Kind
+        - name: patent_reg_number
+          in: path
+          required: true
+          schema:
+            type: integer
+            title: Patent Reg Number
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /uploadfile/:
+    post:
+      tags:
+        - Patents
+      summary: Send Patent File
+      description: |-
+        Загрузить Excel-файл с данными о патентах.
+
+        Parameters:
+        - **file** (UploadFile): Excel-файл с данными о патентах.
+            Файл должен соответствовать установленному шаблону.
+
+        Returns:
+        - **Dict[str, str]**: Результат обработки файла:
+            * message (str): Сообщение о результате загрузки
+            * filename (str): Имя обработанного файла
+      operationId: send_patent_file_uploadfile__post
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_send_patent_file_uploadfile__post'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /patents/export:
+    get:
+      tags:
+        - Patents
+      summary: Export Patents
+      description: >-
+        Экспортировать данные о патентах в формате XLSX.
+
+
+        Parameters:
+
+        - **filter_id** (int, optional): ID фильтра для экспорта патентов по
+        списку ИНН.
+            ID фильтров начинаются с 4 и выше.
+        - **actual** (str, optional): Фильтр по актуальности:
+            * "Актуально" - только действующие патенты
+            * "Неактуально" - только недействующие патенты
+        - **kind** (int, optional): Тип патента для фильтрации:
+            * 1 - Изобретение
+            * 2 - Полезная модель
+            * 3 - Промышленный образец
+
+        Returns:
+
+        - **StreamingResponse**: Поток с XLSX-файлом
+
+
+        Note:
+
+        - Без фильтров экспортируются первые 10000 патентов
+      operationId: export_patents_patents_export_get
+      parameters:
+        - name: filter_id
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+              - type: 'null'
+            title: Filter Id
+        - name: actual
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Actual
+        - name: kind
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+              - type: 'null'
+            title: Kind
+      responses:
+        '200':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /persons:
+    get:
+      tags:
+        - Persons
+      summary: Patents Stats
+      description: >-
+        Получение статистики по патентам в разрезе различных категорий.
+
+
+        Возвращает статистику распределения патентов по следующим категориям:
+
+        * Топ-5 кодов ОКОПФ (Организационно-правовая форма) + прочие
+
+        * Топ-5 кодов ОКВЭД (Вид экономической деятельности) + прочие
+
+        * Топ-5 подкатегорий МПК (Международная патентная классификация) +
+        прочие
+      operationId: patents_stats_persons_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonsList'
+    post:
+      tags:
+        - Persons
+      summary: Create Person
+      description: |-
+        Создание новой записи о лице.
+
+        Parameters:
+            person (PersonCreate): Объект с данными о лице, содержащий следующие поля:
+                * kind (int): Вид лица (1 - Юридическое лицо, 2 - ИП, 3 - Физическое лицо)
+                * tax_number (str): ИНН
+                * full_name (str, опционально): Полное наименование
+                * short_name (str, опционально): Сокращенное наименование
+                * legal_address (str, опционально): Юридический адрес
+                * fact_address (str, опционально): Фактический адрес
+                * reg_date (date, опционально): Дата регистрации
+                * active (bool): Статус активности
+                * okopf (str, опционально): Код ОКОПФ
+                * okvad (str, опционально): Код ОКВЭД
+                * region (str, опционально): Регион регистрации
+                * uk (int): Признак участника кластера (1 - участник, 0 - не участник)
+                * support_type (str, опционально): Тип поддержки
+
+        Returns:
+            PersonDB: Созданный объект лица
+      operationId: create_person_persons_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PersonCreate'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonDB'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /persons/all_stats:
+    get:
+      tags:
+        - Persons
+      summary: Get Persons All Stats
+      description: |-
+        Получение общей статистики по всем лицам.
+
+        Parameters:
+            filter_id (int, опционально): Идентификатор фильтра для списка ИНН.
+      operationId: get_persons_all_stats_persons_all_stats_get
+      parameters:
+        - name: filter_id
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+              - type: 'null'
+            title: Filter Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonsAllStats'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /persons/msk_stats:
+    get:
+      tags:
+        - Persons
+      summary: Get Persons Msk Stats
+      description: |-
+        Получение статистики по лицам, зарегистрированным в Москве.
+
+        Args:
+            filter_id (Optional[int]): опциональный идентификатор загруженного фильтра по списку ИНН.
+             session (AsyncSession): асинхронная сессия базы данных.
+
+        Returns:
+            PersonsStats: словарь со статистикой.
+      operationId: get_persons_msk_stats_persons_msk_stats_get
+      parameters:
+        - name: filter_id
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+              - type: 'null'
+            title: Filter Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonsMskStats'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /persons/{person_tax_number}:
+    get:
+      tags:
+        - Persons
+      summary: Get Person
+      description: |-
+        Получение подробной информации о лице по ИНН.
+
+        Parameters:
+            person_tax_number (str): ИНН лица
+
+        Returns:
+            Объект PersonAdditionalFields, содержащий:
+                * Все базовые поля лица
+                * category (str): Категория лица
+                * patents (list): Список связанных патентов с их видами и регистрационными номерами
+                * patent_count (int): Общее количество патентов
+      operationId: get_person_persons__person_tax_number__get
+      parameters:
+        - name: person_tax_number
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Person Tax Number
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonAdditionalFields'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    patch:
+      tags:
+        - Persons
+      summary: Update Person
+      description: |-
+        Обновление информации о существующем лице.
+
+        Args:
+            person_tax_number (str): идентификационный номер персоны.
+            obj_in (PersonUpdate): данные для обновления персоны.
+            session (AsyncSession): асинхронная сессия базы данных.
+
+        Returns:
+            PersonDB: обновленная персона.
+      operationId: update_person_persons__person_tax_number__patch
+      parameters:
+        - name: person_tax_number
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Person Tax Number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PersonUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonDB'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+        - Persons
+      summary: Delete Person
+      description: |-
+        Удаление лица по ИНН.
+
+        Args:
+            person_tax_number(int): идентификационный номер персоны.
+            session (AsyncSession): асинхронная сессия базы данных.
+      operationId: delete_person_persons__person_tax_number__delete
+      parameters:
+        - name: person_tax_number
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Person Tax Number
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /filters:
+    post:
+      tags:
+        - Filters
+      summary: Create Filter
+      description: |-
+        Создает новый фильтр на основе загруженного Excel-файла.
+
+        Args:
+            name (str): Имя нового фильтра.
+            file (UploadFile): Загружаемый Excel-файл с данными для фильтра.
+            session (AsyncSession): Сессия для взаимодействия с базой данных.
+
+        Raises:
+            HTTPException(400): Если формат загруженного файла не поддерживается.
+            HTTPException(500): Если произошла ошибка при создании фильтра.
+
+        Returns:
+            FilterDB: Созданный фильтр.
+      operationId: create_filter_filters_post
+      parameters:
+        - name: name
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Name
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_create_filter_filters_post'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FilterDB'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+        - Filters
+      summary: Read Filters
+      description: |-
+        Получает список всех фильтров.
+
+        Args:
+            session (AsyncSession): Сессия для взаимодействия с базой данных.
+
+        Returns:
+            List[FilterDB]: Список всех фильтров.
+      operationId: read_filters_filters_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FilterDB'
+                title: Response Read Filters Filters Get
+  /filters/{filter_id}:
+    get:
+      tags:
+        - Filters
+      summary: Read Filter
+      description: |-
+        Получает фильтр по его идентификатору.
+
+        Args:
+            filter_id (int): Идентификатор фильтра.
+            session (AsyncSession): Сессия для взаимодействия с базой данных.
+
+        Raises:
+            HTTPException(404): Если фильтр с указанным идентификатором не найден.
+
+        Returns:
+            FilterDB: Фильтр с указанным идентификатором.
+      operationId: read_filter_filters__filter_id__get
+      parameters:
+        - name: filter_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            title: Filter Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FilterDB'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    put:
+      tags:
+        - Filters
+      summary: Update Filter
+      description: |-
+        Обновляет имя существующего фильтра.
+
+        Args:
+            filter_id (int): Идентификатор фильтра.
+            name (str): Новое имя фильтра.
+            session (AsyncSession): Сессия для взаимодействия с базой данных.
+
+        Returns:
+            FilterDB: Обновленный фильтр.
+      operationId: update_filter_filters__filter_id__put
+      parameters:
+        - name: filter_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            title: Filter Id
+        - name: name
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Name
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FilterDB'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+        - Filters
+      summary: Delete Filter
+      description: |-
+        Удаляет существующий фильтр.
+
+        Args:
+            filter_id (int): Идентификатор фильтра.
+            session (AsyncSession): Сессия для взаимодействия с базой данных.
+
+        Returns:
+            FilterDB: Удаленный фильтр.
+      operationId: delete_filter_filters__filter_id__delete
+      parameters:
+        - name: filter_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            title: Filter Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+components:
+  schemas:
+    Body_create_filter_filters_post:
+      properties:
+        file:
+          type: string
+          format: binary
+          title: File
+      type: object
+      required:
+        - file
+      title: Body_create_filter_filters_post
+    Body_send_patent_file_uploadfile__post:
+      properties:
+        file:
+          type: string
+          format: binary
+          title: File
+      type: object
+      required:
+        - file
+      title: Body_send_patent_file_uploadfile__post
+    FilterDB:
+      properties:
+        name:
+          type: string
+          title: Name
+        filename:
+          type: string
+          title: Filename
+        id:
+          type: integer
+          title: Id
+        created:
+          type: string
+          format: date-time
+          title: Created
+        tax_numbers_count:
+          type: integer
+          title: Tax Numbers Count
+      type: object
+      required:
+        - name
+        - filename
+        - id
+        - created
+        - tax_numbers_count
+      title: FilterDB
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    PatentAdditionalFields:
+      properties:
+        reg_number:
+          type: integer
+          title: Reg Number
+        reg_date:
+          anyOf:
+            - type: string
+              format: date
+            - type: 'null'
+          title: Reg Date
+        appl_date:
+          anyOf:
+            - type: string
+              format: date
+            - type: 'null'
+          title: Appl Date
+        owner_raw:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Owner Raw
+        address:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Address
+        name:
+          type: string
+          title: Name
+        actual:
+          anyOf:
+            - type: boolean
+            - type: string
+          title: Actual
+        subcategory:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Subcategory
+        kind:
+          type: integer
+          title: Kind
+        country_code:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Country Code
+        region:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Region
+        city:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: City
+        appl_number:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Appl Number
+        patent_starting_date:
+          type: string
+          format: date
+          title: Patent Starting Date
+        publication_url:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Publication Url
+        patent_holders:
+          items:
+            $ref: '#/components/schemas/PatentHolder'
+          type: array
+          title: Patent Holders
+      type: object
+      required:
+        - reg_number
+        - name
+        - actual
+        - kind
+        - patent_starting_date
+        - patent_holders
+      title: PatentAdditionalFields
+    PatentCreate:
+      properties:
+        reg_number:
+          type: integer
+          title: Reg Number
+        reg_date:
+          anyOf:
+            - type: string
+              format: date
+            - type: 'null'
+          title: Reg Date
+        appl_date:
+          anyOf:
+            - type: string
+              format: date
+            - type: 'null'
+          title: Appl Date
+        owner_raw:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Owner Raw
+        address:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Address
+        name:
+          type: string
+          title: Name
+        actual:
+          anyOf:
+            - type: boolean
+            - type: string
+          title: Actual
+        subcategory:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Subcategory
+        kind:
+          type: integer
+          title: Kind
+        country_code:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Country Code
+        region:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Region
+        city:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: City
+        appl_number:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Appl Number
+        patent_starting_date:
+          type: string
+          format: date
+          title: Patent Starting Date
+        publication_url:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Publication Url
+      type: object
+      required:
+        - reg_number
+        - name
+        - actual
+        - kind
+        - patent_starting_date
+      title: PatentCreate
+    PatentDB:
+      properties:
+        reg_number:
+          type: integer
+          title: Reg Number
+        reg_date:
+          anyOf:
+            - type: string
+              format: date
+            - type: 'null'
+          title: Reg Date
+        appl_date:
+          anyOf:
+            - type: string
+              format: date
+            - type: 'null'
+          title: Appl Date
+        owner_raw:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Owner Raw
+        address:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Address
+        name:
+          type: string
+          title: Name
+        actual:
+          anyOf:
+            - type: boolean
+            - type: string
+          title: Actual
+        subcategory:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Subcategory
+        kind:
+          type: integer
+          title: Kind
+        country_code:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Country Code
+        region:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Region
+        city:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: City
+        appl_number:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Appl Number
+        patent_starting_date:
+          type: string
+          format: date
+          title: Patent Starting Date
+        publication_url:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Publication Url
+      type: object
+      required:
+        - reg_number
+        - name
+        - actual
+        - kind
+        - patent_starting_date
+      title: PatentDB
+    PatentHolder:
+      properties:
+        full_name:
+          type: string
+          title: Full Name
+        tax_number:
+          type: string
+          title: Tax Number
+      type: object
+      required:
+        - full_name
+        - tax_number
+      title: PatentHolder
+    PatentUpdate:
+      properties:
+        reg_number:
+          type: integer
+          title: Reg Number
+        reg_date:
+          anyOf:
+            - type: string
+              format: date
+            - type: 'null'
+          title: Reg Date
+        appl_date:
+          anyOf:
+            - type: string
+              format: date
+            - type: 'null'
+          title: Appl Date
+        owner_raw:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Owner Raw
+        address:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Address
+        name:
+          type: string
+          title: Name
+        actual:
+          anyOf:
+            - type: boolean
+            - type: string
+          title: Actual
+        subcategory:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Subcategory
+        kind:
+          type: integer
+          title: Kind
+        country_code:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Country Code
+        region:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Region
+        city:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: City
+        appl_number:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Appl Number
+        patent_starting_date:
+          type: string
+          format: date
+          title: Patent Starting Date
+        publication_url:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Publication Url
+      type: object
+      required:
+        - reg_number
+        - name
+        - actual
+        - kind
+        - patent_starting_date
+      title: PatentUpdate
+    PatentsList:
+      properties:
+        total:
+          type: integer
+          title: Total
+        items:
+          anyOf:
+            - items:
+                $ref: '#/components/schemas/PatentAdditionalFields'
+              type: array
+            - type: 'null'
+          title: Items
+      type: object
+      required:
+        - total
+        - items
+      title: PatentsList
+    PatentsStats:
+      properties:
+        total_patents:
+          type: integer
+          title: Total Patents
+        total_ru_patents:
+          type: integer
+          title: Total Ru Patents
+        total_with_holders:
+          type: integer
+          title: Total With Holders
+        total_ru_with_holders:
+          type: integer
+          title: Total Ru With Holders
+        with_holders_percent:
+          type: integer
+          title: With Holders Percent
+        ru_with_holders_percent:
+          type: integer
+          title: Ru With Holders Percent
+        by_author_count:
+          additionalProperties:
+            type: integer
+          type: object
+          title: By Author Count
+        by_patent_kind:
+          additionalProperties:
+            type: integer
+          type: object
+          title: By Patent Kind
+      type: object
+      required:
+        - total_patents
+        - total_ru_patents
+        - total_with_holders
+        - total_ru_with_holders
+        - with_holders_percent
+        - ru_with_holders_percent
+        - by_author_count
+        - by_patent_kind
+      title: PatentsStats
+    PersonAdditionalFields:
+      properties:
+        kind:
+          type: integer
+          title: Kind
+        tax_number:
+          type: string
+          title: Tax Number
+        full_name:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Full Name
+        short_name:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Short Name
+        legal_address:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Legal Address
+        fact_address:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Fact Address
+        reg_date:
+          anyOf:
+            - type: string
+              format: date
+            - type: 'null'
+          title: Reg Date
+        active:
+          type: boolean
+          title: Active
+        okopf:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Okopf
+        okvad:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Okvad
+        region:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Region
+        uk:
+          type: integer
+          title: Uk
+        support_type:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Support Type
+        category:
+          type: string
+          title: Category
+        patents:
+          items:
+            $ref: '#/components/schemas/PersonPatents'
+          type: array
+          title: Patents
+          default: []
+        patent_count:
+          type: integer
+          title: Patent Count
+          default: 0
+      type: object
+      required:
+        - kind
+        - tax_number
+        - full_name
+        - short_name
+        - legal_address
+        - fact_address
+        - reg_date
+        - active
+        - okopf
+        - okvad
+        - region
+        - uk
+        - support_type
+        - category
+      title: PersonAdditionalFields
+    PersonCreate:
+      properties:
+        kind:
+          type: integer
+          title: Kind
+        tax_number:
+          type: string
+          title: Tax Number
+        full_name:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Full Name
+        short_name:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Short Name
+        legal_address:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Legal Address
+        fact_address:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Fact Address
+        reg_date:
+          anyOf:
+            - type: string
+              format: date
+            - type: 'null'
+          title: Reg Date
+        active:
+          type: boolean
+          title: Active
+        okopf:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Okopf
+        okvad:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Okvad
+        region:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Region
+        uk:
+          type: integer
+          title: Uk
+        support_type:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Support Type
+      type: object
+      required:
+        - kind
+        - tax_number
+        - full_name
+        - short_name
+        - legal_address
+        - fact_address
+        - reg_date
+        - active
+        - okopf
+        - okvad
+        - region
+        - uk
+        - support_type
+      title: PersonCreate
+    PersonDB:
+      properties:
+        kind:
+          type: integer
+          title: Kind
+        tax_number:
+          type: string
+          title: Tax Number
+        full_name:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Full Name
+        short_name:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Short Name
+        legal_address:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Legal Address
+        fact_address:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Fact Address
+        reg_date:
+          anyOf:
+            - type: string
+              format: date
+            - type: 'null'
+          title: Reg Date
+        active:
+          type: boolean
+          title: Active
+        okopf:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Okopf
+        okvad:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Okvad
+        region:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Region
+        uk:
+          type: integer
+          title: Uk
+        support_type:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Support Type
+      type: object
+      required:
+        - kind
+        - tax_number
+        - full_name
+        - short_name
+        - legal_address
+        - fact_address
+        - reg_date
+        - active
+        - okopf
+        - okvad
+        - region
+        - uk
+        - support_type
+      title: PersonDB
+    PersonPatents:
+      properties:
+        kind:
+          type: integer
+          title: Kind
+        reg_number:
+          type: integer
+          title: Reg Number
+      type: object
+      required:
+        - kind
+        - reg_number
+      title: PersonPatents
+    PersonUpdate:
+      properties:
+        kind:
+          type: integer
+          title: Kind
+        tax_number:
+          type: string
+          title: Tax Number
+        full_name:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Full Name
+        short_name:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Short Name
+        legal_address:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Legal Address
+        fact_address:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Fact Address
+        reg_date:
+          anyOf:
+            - type: string
+              format: date
+            - type: 'null'
+          title: Reg Date
+        active:
+          type: boolean
+          title: Active
+        okopf:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Okopf
+        okvad:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Okvad
+        region:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Region
+        uk:
+          type: integer
+          title: Uk
+        support_type:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Support Type
+      type: object
+      required:
+        - kind
+        - tax_number
+        - full_name
+        - short_name
+        - legal_address
+        - fact_address
+        - reg_date
+        - active
+        - okopf
+        - okvad
+        - region
+        - uk
+        - support_type
+      title: PersonUpdate
+    PersonsAllStats:
+      properties:
+        total_persons:
+          type: integer
+          title: Total Persons
+        by_kind:
+          additionalProperties:
+            type: integer
+          type: object
+          title: By Kind
+        by_category:
+          additionalProperties:
+            type: integer
+          type: object
+          title: By Category
+      type: object
+      required:
+        - total_persons
+        - by_kind
+        - by_category
+      title: PersonsAllStats
+    PersonsList:
+      properties:
+        okopf_stats:
+          items:
+            $ref: '#/components/schemas/StatItem'
+          type: array
+          title: Okopf Stats
+        okvad_stats:
+          items:
+            $ref: '#/components/schemas/StatItem'
+          type: array
+          title: Okvad Stats
+        mpk_stats:
+          items:
+            $ref: '#/components/schemas/StatItem'
+          type: array
+          title: Mpk Stats
+      type: object
+      required:
+        - okopf_stats
+        - okvad_stats
+        - mpk_stats
+      title: PersonsList
+    PersonsMskStats:
+      properties:
+        total_persons:
+          type: integer
+          title: Total Persons
+        by_kind:
+          additionalProperties:
+            type: integer
+          type: object
+          title: By Kind
+        by_category:
+          additionalProperties:
+            type: integer
+          type: object
+          title: By Category
+        moscow_cluster_percentage:
+          type: number
+          title: Moscow Cluster Percentage
+        moscow_support_type_percentage:
+          type: number
+          title: Moscow Support Type Percentage
+      type: object
+      required:
+        - total_persons
+        - by_kind
+        - by_category
+        - moscow_cluster_percentage
+        - moscow_support_type_percentage
+      title: PersonsMskStats
+    StatItem:
+      properties:
+        name:
+          type: string
+          title: Name
+        count:
+          type: integer
+          title: Count
+      type: object
+      required:
+        - name
+        - count
+      title: StatItem
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+              - type: string
+              - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+      type: object
+      required:
+        - loc
+        - msg
+        - type
+      title: ValidationError

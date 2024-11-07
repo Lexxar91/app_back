@@ -1,8 +1,8 @@
 from datetime import date
 from enum import IntEnum
-from typing import Optional
+from typing import Dict, List, Optional
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel
 
 
 class KindEnum(IntEnum):
@@ -24,26 +24,26 @@ class PatentHolder(BaseModel):
 
 class PatentBase(BaseModel):
     reg_number: int
-    reg_date: Optional[date]
-    appl_date: Optional[date]
-    author_raw: Optional[str]
-    owner_raw: Optional[str]
-    address: Optional[str]
+    reg_date: Optional[date] = None
+    appl_date: Optional[date] = None
+    owner_raw: Optional[str] = None
+    address: Optional[str] = None
     name: str
-    actual: bool
-    category: Optional[str]
-    subcategory: Optional[str]
+    actual: bool | str
+    subcategory: Optional[str] = None
     kind: int
-    author_count: int
-    region: Optional[str]
-    city: Optional[str]
-
-    @field_validator('kind')
-    @classmethod
-    def check_kind_value(cls, value: int):
-        if value not in KindEnum.__members__.values():
-            raise ValueError('Можно использовать только цифры от 1 до 3')
-        return value
+    country_code: Optional[str] = None
+    region: Optional[str] = None
+    city: Optional[str] = None
+    appl_number: Optional[str] = None
+    patent_starting_date: date
+    publication_url: Optional[str] = None
+    # @field_validator('kind')
+    # @classmethod
+    # def check_kind_value(cls, value: int):
+    #     if value not in KindEnum.__members__.values():
+    #         raise ValueError('Можно использовать только цифры от 1 до 3')
+    #     return value
 
 
 class PatentCreate(PatentBase):
@@ -56,7 +56,7 @@ class PatentUpdate(PatentBase):
 
 class PatentAdditionalFields(PatentBase):
     patent_holders: list[PatentHolder]
-    author_count: int = 0
+
 
     class Config:
         orm_mode = True
@@ -65,3 +65,19 @@ class PatentAdditionalFields(PatentBase):
 class PatentDB(PatentBase):
     class Config:
         orm_mode = True
+
+
+class PatentsList(BaseModel):
+    total: int
+    items: Optional[List[PatentAdditionalFields]]
+
+
+class PatentsStats(BaseModel):
+    total_patents: int
+    total_ru_patents: int
+    total_with_holders: int
+    total_ru_with_holders: int
+    with_holders_percent: int
+    ru_with_holders_percent: int
+    by_author_count: Dict[str, int]
+    by_patent_kind: Dict[int, int]

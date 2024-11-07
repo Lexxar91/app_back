@@ -6,7 +6,7 @@ from app.core.db import Base
 
 class Patent(Base):
     """
-    Модель Patent представляет патент.
+    Модель Patent.
 
     Атрибуты:
        reg_number (int): Регистрационный номер патента. Индексируемый столбец.
@@ -20,6 +20,7 @@ class Patent(Base):
        category (str): Категория патента.
        subcategory (str): Подкатегория патента.
        kind (int): Тип патента. Не может быть пустым.
+       country_code (str): Страна правообладателя (двухбуквенный код, например RU).
        region (str): Регион, связанный с патентом.
        city (str): Город, связанный с патентом.
        author_count (int): Количество авторов патента.
@@ -36,12 +37,15 @@ class Patent(Base):
     address = Column(String)
     name = Column(String)
     actual = Column(Boolean, default=True)
-    category = Column(String)
     subcategory = Column(String)
     kind = Column(Integer, nullable=False)
+    country_code = Column(String(length=10))
     region = Column(String)
     city = Column(String)
     author_count = Column(Integer)
+    appl_number = Column(String)
+    patent_starting_date = Column(Date, nullable=False)
+    publication_url = Column(String(length=255))
 
     ownerships = relationship('Ownership', back_populates='patent', cascade="all, delete-orphan")
 
